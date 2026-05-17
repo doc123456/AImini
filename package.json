@@ -1,0 +1,45 @@
+{
+  "name": "aimini",
+  "version": "0.1.0",
+  "description": "Always-on-top floating AI assistant with screenshots, history, tray controls, and model settings.",
+  "author": "AImini",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable",
+    "pack": "electron-builder --dir"
+  },
+  "build": {
+    "appId": "com.aimini.desktop",
+    "productName": "AImini",
+    "asar": true,
+    "electronDist": "node_modules/electron/dist",
+    "electronVersion": "30.5.1",
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-${version}-portable.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.${ext}"
+    }
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^30.5.1",
+    "electron-builder": "^26.8.1"
+  }
+}

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AImini</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="floating">
+    <main id="app" class="bar">
+      <button id="wakeButton" class="wake-button" title="展开 AImini"></button>
+      <section class="controls">
+        <div class="input-wrap">
+          <button id="imageBadge" class="image-badge" hidden title="已添加截图，点击清空">▧</button>
+          <input id="prompt" class="prompt" placeholder="输入文字，按 Enter 发送" />
+          <button id="clearImage" class="clear-image" hidden title="移除截图">×</button>
+        </div>
+        <button id="capture" class="icon-button" title="添加截图">▣</button>
+        <button id="toggle" class="icon-button" title="展开历史">⌄</button>
+      </section>
+      <section id="preview" class="reply-preview" hidden></section>
+      <section id="history" class="history" hidden></section>
+    </main>
+    <script src="./floating.js"></script>
+  </body>
+</html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AImini Settings</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="settings-page">
+    <main class="settings-shell">
+      <header>
+        <h1>AImini 设置</h1>
+        <p>配置在线 API、LM Studio，或预设本地模型加载参数。</p>
+      </header>
+
+      <section class="field">
+        <label for="provider">AI 来源</label>
+        <select id="provider">
+          <option value="lmstudio">LM Studio</option>
+          <option value="api">在线 API</option>
+          <option value="local">本地模型</option>
+        </select>
+      </section>
+
+      <section class="field">
+        <label>响应模式</label>
+        <div class="checks compact">
+          <label><input id="thinkingMode" type="checkbox" /> 启用思考模式</label>
+          <label><input id="streamMode" type="checkbox" /> 流式输出</label>
+        </div>
+      </section>
+
+      <section class="settings-grid">
+        <form id="apiPanel" class="panel">
+          <h2>在线 API</h2>
+          <label>URL<input id="apiBaseUrl" placeholder="https://api.example.com/v1" /></label>
+          <label>API Key<input id="apiKey" type="password" placeholder="sk-..." /></label>
+          <label>模型名称<input id="apiModel" placeholder="gpt-4o-mini / qwen-vl-plus / ..." /></label>
+        </form>
+
+        <form id="lmPanel" class="panel">
+          <h2>LM Studio</h2>
+          <label>URL<input id="lmBaseUrl" placeholder="http://localhost:1234/v1" /></label>
+          <label>API Key<input id="lmApiKey" placeholder="lm-studio" /></label>
+          <label>模型名称<input id="lmModel" placeholder="在 LM Studio Server 中加载的模型名" /></label>
+        </form>
+
+        <form id="localPanel" class="panel wide">
+          <h2>本地模型</h2>
+          <label>服务 URL<input id="localBaseUrl" placeholder="http://localhost:8080/v1" /></label>
+          <label>API Key<input id="localApiKey" placeholder="local" /></label>
+          <label>模型名称<input id="localModel" placeholder="local-model" /></label>
+          <label>模型路径<input id="localModelPath" placeholder="C:\\models\\model.gguf" /></label>
+          <label>后端<input id="localBackend" placeholder="llama.cpp server" /></label>
+          <label>启动命令<input id="localCommand" placeholder="llama-server -m C:\\models\\model.gguf --port 1234" /></label>
+          <div class="two-col">
+            <label>上下文窗口<input id="contextSize" type="number" min="512" step="512" /></label>
+            <label>GPU Layers<input id="gpuLayers" type="number" min="0" step="1" /></label>
+            <label>线程数<input id="threads" type="number" min="1" step="1" /></label>
+            <label>Temperature<input id="temperature" type="number" min="0" max="2" step="0.1" /></label>
+          </div>
+          <div class="checks">
+            <label><input id="useGpu" type="checkbox" /> 使用 GPU 加载</label>
+            <label><input id="offloadKqv" type="checkbox" /> Offload K/Q/V</label>
+          </div>
+        </form>
+      </section>
+
+      <footer>
+        <span id="status"></span>
+        <button id="save">保存设置</button>
+      </footer>
+    </main>
+    <script src="./settings.js"></script>
+  </body>
+</html>
