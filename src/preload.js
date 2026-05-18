@@ -41,6 +41,9 @@ contextBridge.exposeInMainWorld("aimini", {
   setCollapsed: (collapsed) => ipcRenderer.invoke("window:set-collapsed", collapsed),
   getHistory: () => ipcRenderer.invoke("history:get"),
   getCacheRecords: () => ipcRenderer.invoke("cache:get"),
+  openCachedImage: (filePath) => ipcRenderer.invoke("cache:open-image", filePath),
+  getPreviewImage: () => ipcRenderer.invoke("image-preview:get"),
+  onPreviewImageUpdated: (callback) => ipcRenderer.on("image-preview:updated", (_event, payload) => callback(payload)),
   onHistoryUpdated: (callback) => {
     ipcRenderer.on("history:updated", (_event, history) => callback(history));
   },

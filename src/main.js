@@ -6,6 +6,7 @@ const path = require("path");
 let floatingWindow;
 let settingsWindow;
 let cacheWindow;
+let imagePreviewWindow;
 let tray;
 let configPath;
 let cacheDir;
@@ -160,6 +161,42 @@ function getCacheForView() {
       dataUrl: imageFileToDataUrl(filePath)
     }))
   }));
+}
+
+let previewImageData = { dataUrl: "", filePath: "" };
+
+function openImagePreview(filePath) {
+  const recordsRoot = path.resolve(screenshotsDir || path.join(app.getPath("userData"), "cache", "screenshots"));
+  const resolvedPath = path.resolve(filePath || "");
+  if (!resolvedPath.startsWith(recordsRoot) || !fs.existsSync(resolvedPath)) {
+    throw new Error("图片文件不存在或路径无效。");
+  }
+
+  previewImageData = {
+    dataUrl: imageFileToDataUrl(resolvedPath),
+    filePath: resolvedPath
+  };
+
+  if (imagePreviewWindow && !imagePreviewWindow.isDestroyed()) {
+    imagePreviewWindow.focus();
+    imagePreviewWindow.webContents.send("image-preview:updated", previewImageData);
+    return;
+  }
+
+  imagePreviewWindow = new BrowserWindow({
+    width: 920,
+    height: 720,
+    minWidth: 520,
+    minHeight: 420,
+    title: "AImini 截图预览",
+    icon: getAppIcon(),
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      sandbox: false
+    }
+  });
+
+  imagePreviewWindow.loadFile(path.join(__dirname, "renderer", "image-preview.html"));
 }
 
 function mergeConfig(base, incoming) {
@@ -555,6 +592,8 @@ ipcMain.handle("settings:save", (_event, config) => {
 
 ipcMain.handle("history:get", () => history);
 ipcMain.handle("cache:get", () => getCacheForView());
+ipcMain.handle("cache:open-image", (_event, filePath) => openImagePreview(filePath));
+ipcMain.handle("image-preview:get", () => previewImageData);
 ipcMain.handle("window:set-expanded", (_event, expanded) => {
   const size = expanded ? FLOATING_SIZES.history : FLOATING_SIZES.normal;
   setFloatingSize(size);

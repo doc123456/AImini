@@ -33,15 +33,21 @@ function renderRecords(records) {
       ${(record.screenshots || []).length ? `
         <div class="cache-shots">
           ${record.screenshots.map((shot) => shot.dataUrl ? `
-            <a href="${escapeHtml(shot.dataUrl)}" target="_blank" title="${escapeHtml(shot.filePath)}">
+            <button class="cache-shot" data-path="${escapeHtml(shot.filePath)}" title="${escapeHtml(shot.filePath)}">
               <img src="${escapeHtml(shot.dataUrl)}" alt="cached screenshot" />
-            </a>
+            </button>
           ` : "").join("")}
         </div>
       ` : ""}
       <div class="cache-answer markdown-body">${renderMarkdown(record.answer || "")}</div>
     </article>
   `).join("");
+
+  cacheList.querySelectorAll(".cache-shot").forEach((button) => {
+    button.addEventListener("click", () => {
+      window.aimini.openCachedImage(button.dataset.path);
+    });
+  });
 }
 
 async function refreshCache() {
