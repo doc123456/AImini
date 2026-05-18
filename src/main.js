@@ -62,6 +62,7 @@ const defaultConfig = {
 };
 
 const history = [];
+const CONTEXT_TURNS = 8;
 
 app.commandLine.appendSwitch("disable-direct-composition");
 app.commandLine.appendSwitch("disable-features", "HardwareMediaKeyHandling,OverlayScrollbar,UseSkiaRenderer");
@@ -330,6 +331,32 @@ function createUserContent({ prompt, screenshots, config }) {
   return { content, imageList };
 }
 
+function stripThinking(text) {
+  return String(text || "")
+    .replace(/<think>[\s\S]*?<\/think>/gi, "")
+    .replace(/<think>[\s\S]*$/i, "")
+    .trim();
+}
+
+function buildConversationMessages(currentContent) {
+  const priorMessages = [];
+  const completedItems = history
+    .filter((item) => item.prompt && item.answer)
+    .slice(0, CONTEXT_TURNS)
+    .reverse();
+
+  for (const item of completedItems) {
+    const promptText = item.hasScreenshot
+      ? `${item.prompt}\n[用户在这一轮附加了 ${item.screenshotCount || 1} 张截图，旧截图不再重复发送。]`
+      : item.prompt;
+    priorMessages.push({ role: "user", content: promptText });
+    priorMessages.push({ role: "assistant", content: stripThinking(item.answer) });
+  }
+
+  priorMessages.push({ role: "user", content: currentContent });
+  return priorMessages;
+}
+
 function getDeltaFromChunk(chunk) {
   const lines = chunk.split(/\r?\n/);
   let output = "";
@@ -361,12 +388,7 @@ async function requestModel({ prompt, screenshots, stream, onDelta }) {
   const thinkingDisabled = config.behavior?.thinkingMode === false;
   const body = {
     model: endpoint.model,
-    messages: [
-      {
-        role: "user",
-        content
-      }
-    ],
+    messages: buildConversationMessages(content),
     temperature: config.local.temperature ?? 0.7,
     stream: useStream
   };
