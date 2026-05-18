@@ -432,3 +432,90 @@ footer {
 #save:hover {
   background: #176f63;
 }
+
+.cache-page {
+  background: #f4f7f8;
+}
+
+.cache-shell {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.cache-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.cache-header h1 {
+  margin: 0 0 6px;
+  font-size: 26px;
+}
+
+.cache-header p {
+  margin: 0;
+  color: #5e6b78;
+}
+
+.cache-refresh {
+  height: 36px;
+  min-width: 76px;
+  border: 1px solid rgba(24, 39, 54, 0.16);
+  border-radius: 6px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.cache-list {
+  display: grid;
+  gap: 12px;
+}
+
+.cache-record {
+  border: 1px solid rgba(24, 39, 54, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.cache-time {
+  margin-bottom: 8px;
+  color: #687483;
+  font-size: 12px;
+}
+
+.cache-prompt {
+  margin-bottom: 10px;
+  font-weight: 700;
+  color: #17212b;
+}
+
+.cache-shots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.cache-shots img {
+  width: 156px;
+  height: 96px;
+  object-fit: cover;
+  border: 1px solid rgba(24, 39, 54, 0.12);
+  border-radius: 6px;
+  background: #f6f8fa;
+}
+
+.cache-answer {
+  color: #263442;
+}
+
+.cache-empty {
+  margin: 64px 0;
+  text-align: center;
+  color: #687483;
+}

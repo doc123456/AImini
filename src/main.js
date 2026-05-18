@@ -5,8 +5,12 @@ const path = require("path");
 
 let floatingWindow;
 let settingsWindow;
+let cacheWindow;
 let tray;
 let configPath;
+let cacheDir;
+let recordsPath;
+let screenshotsDir;
 let localProcess;
 let captureWindow;
 let captureSelectionResolver;
@@ -63,6 +67,7 @@ const defaultConfig = {
 
 const history = [];
 const CONTEXT_TURNS = 8;
+const CACHE_LIMIT = 500;
 
 app.commandLine.appendSwitch("disable-direct-composition");
 app.commandLine.appendSwitch("disable-features", "HardwareMediaKeyHandling,OverlayScrollbar,UseSkiaRenderer");
@@ -83,6 +88,78 @@ function ensureConfig() {
   } catch {
     return structuredClone(defaultConfig);
   }
+}
+
+function ensureCache() {
+  cacheDir = path.join(app.getPath("userData"), "cache");
+  screenshotsDir = path.join(cacheDir, "screenshots");
+  recordsPath = path.join(cacheDir, "records.json");
+  fs.mkdirSync(screenshotsDir, { recursive: true });
+  if (!fs.existsSync(recordsPath)) {
+    fs.writeFileSync(recordsPath, "[]");
+  }
+}
+
+function readCacheRecords() {
+  ensureCache();
+  try {
+    const records = JSON.parse(fs.readFileSync(recordsPath, "utf8"));
+    return Array.isArray(records) ? records : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCacheRecords(records) {
+  ensureCache();
+  fs.writeFileSync(recordsPath, JSON.stringify(records.slice(0, CACHE_LIMIT), null, 2));
+}
+
+function saveScreenshotFiles(recordId, screenshots) {
+  ensureCache();
+  return (Array.isArray(screenshots) ? screenshots : [])
+    .filter(Boolean)
+    .map((base64, index) => {
+      const filename = `${recordId}-${index + 1}.png`;
+      const filePath = path.join(screenshotsDir, filename);
+      fs.writeFileSync(filePath, Buffer.from(base64, "base64"));
+      return filePath;
+    });
+}
+
+function cacheConversation(item, screenshots) {
+  ensureCache();
+  const recordId = String(item.id || Date.now());
+  const screenshotPaths = saveScreenshotFiles(recordId, screenshots);
+  const records = readCacheRecords().filter((record) => String(record.id) !== recordId);
+  records.unshift({
+    id: recordId,
+    prompt: item.prompt || "",
+    answer: item.answer || "",
+    createdAt: item.createdAt || new Date().toLocaleString(),
+    screenshotCount: screenshotPaths.length,
+    screenshots: screenshotPaths
+  });
+  writeCacheRecords(records);
+}
+
+function imageFileToDataUrl(filePath) {
+  try {
+    const data = fs.readFileSync(filePath).toString("base64");
+    return `data:image/png;base64,${data}`;
+  } catch {
+    return "";
+  }
+}
+
+function getCacheForView() {
+  return readCacheRecords().map((record) => ({
+    ...record,
+    screenshots: (record.screenshots || []).map((filePath) => ({
+      filePath,
+      dataUrl: imageFileToDataUrl(filePath)
+    }))
+  }));
 }
 
 function mergeConfig(base, incoming) {
@@ -153,6 +230,28 @@ function createSettingsWindow() {
   settingsWindow.loadFile(path.join(__dirname, "renderer", "settings.html"));
 }
 
+function createCacheWindow() {
+  if (cacheWindow && !cacheWindow.isDestroyed()) {
+    cacheWindow.focus();
+    return;
+  }
+
+  cacheWindow = new BrowserWindow({
+    width: 980,
+    height: 720,
+    minWidth: 780,
+    minHeight: 560,
+    title: "AImini 缓存记录",
+    icon: getAppIcon(),
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      sandbox: false
+    }
+  });
+
+  cacheWindow.loadFile(path.join(__dirname, "renderer", "cache.html"));
+}
+
 function createTray() {
   tray = new Tray(getAppIcon());
   tray.setToolTip("AImini");
@@ -160,6 +259,7 @@ function createTray() {
     { label: "显示悬浮窗", click: () => floatingWindow?.show() },
     { label: "隐藏悬浮窗", click: () => floatingWindow?.hide() },
     { type: "separator" },
+    { label: "查看缓存记录", click: createCacheWindow },
     { label: "设置", click: createSettingsWindow },
     { type: "separator" },
     { label: "退出", click: () => app.quit() }
@@ -454,6 +554,7 @@ ipcMain.handle("settings:save", (_event, config) => {
 });
 
 ipcMain.handle("history:get", () => history);
+ipcMain.handle("cache:get", () => getCacheForView());
 ipcMain.handle("window:set-expanded", (_event, expanded) => {
   const size = expanded ? FLOATING_SIZES.history : FLOATING_SIZES.normal;
   setFloatingSize(size);
@@ -500,6 +601,7 @@ ipcMain.handle("assistant:ask", async (_event, message) => {
   };
   history.unshift(item);
   history.splice(20);
+  cacheConversation(item, screenshots);
   floatingWindow?.webContents.send("history:updated", history);
   return item;
 });
@@ -534,15 +636,18 @@ ipcMain.on("assistant:ask-stream", async (event, message) => {
       }
     });
     item.answer = answer;
+    cacheConversation(item, screenshots);
     event.sender.send("assistant:stream-done", item);
   } catch (error) {
     item.answer = error.message || String(error);
+    cacheConversation(item, screenshots);
     event.sender.send("assistant:stream-error", { requestId, message: item.answer, item });
   }
 });
 
 app.whenReady().then(() => {
   ensureConfig();
+  ensureCache();
   createFloatingWindow();
   createTray();
 });

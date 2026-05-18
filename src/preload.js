@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld("aimini", {
   setPreview: (visible) => ipcRenderer.invoke("window:set-preview", visible),
   setCollapsed: (collapsed) => ipcRenderer.invoke("window:set-collapsed", collapsed),
   getHistory: () => ipcRenderer.invoke("history:get"),
+  getCacheRecords: () => ipcRenderer.invoke("cache:get"),
   onHistoryUpdated: (callback) => {
     ipcRenderer.on("history:updated", (_event, history) => callback(history));
   },
