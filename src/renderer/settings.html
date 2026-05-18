@@ -7,90 +7,136 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body class="settings-page">
-    <main class="settings-shell">
-      <header>
-        <h1>AImini 设置</h1>
-        <p>配置在线 API、LM Studio，或预设本地模型加载参数。</p>
-      </header>
-
-      <section class="field">
-        <label for="provider">AI 来源</label>
-        <select id="provider">
-          <option value="lmstudio">LM Studio</option>
-          <option value="api">在线 API</option>
-          <option value="local">本地模型</option>
-        </select>
-      </section>
-
-      <section class="field">
-        <label>响应模式</label>
-        <div class="checks compact">
-          <label><input id="thinkingMode" type="checkbox" /> 启用思考模式</label>
-          <label><input id="streamMode" type="checkbox" /> 流式输出</label>
+    <main class="settings-layout">
+      <aside class="settings-sidebar">
+        <div class="settings-brand">
+          <h1>AImini 设置</h1>
+          <p>连接、模型与缓存</p>
         </div>
-      </section>
+        <nav class="settings-nav">
+          <button class="settings-tab active" data-tab="general" type="button">通用</button>
+          <button class="settings-tab" data-tab="providers" type="button">连接</button>
+          <button class="settings-tab" data-tab="local" type="button">本地模型</button>
+          <button class="settings-tab" data-tab="cache" type="button">缓存</button>
+        </nav>
+      </aside>
 
-      <section class="settings-grid">
-        <form id="apiPanel" class="panel">
-          <h2>在线 API</h2>
-          <label>URL<input id="apiBaseUrl" placeholder="https://api.example.com/v1" /></label>
-          <label>API Key<input id="apiKey" type="password" placeholder="sk-..." /></label>
-          <label>模型名称<input id="apiModel" placeholder="gpt-4o-mini / qwen-vl-plus / ..." /></label>
-        </form>
+      <section class="settings-content">
+        <section class="settings-section active" data-section="general">
+          <header>
+            <h2>通用</h2>
+            <p>选择 AI 来源和响应方式。</p>
+          </header>
 
-        <form id="lmPanel" class="panel">
-          <h2>LM Studio</h2>
-          <label>URL<input id="lmBaseUrl" placeholder="http://localhost:1234/v1" /></label>
-          <label>API Key<input id="lmApiKey" placeholder="lm-studio" /></label>
-          <label>模型名称<input id="lmModel" placeholder="在 LM Studio Server 中加载的模型名" /></label>
-        </form>
-
-        <form id="localPanel" class="panel wide">
-          <h2>本地模型</h2>
-          <label>服务 URL<input id="localBaseUrl" placeholder="http://localhost:8080/v1" /></label>
-          <label>API Key<input id="localApiKey" placeholder="local" /></label>
-          <label>模型名称<input id="localModel" placeholder="local-model" /></label>
-          <label>模型路径<input id="localModelPath" placeholder="C:\\models\\model.gguf" /></label>
-          <label>后端<input id="localBackend" placeholder="llama.cpp server" /></label>
-          <label>启动命令<input id="localCommand" placeholder="llama-server -m C:\\models\\model.gguf --port 1234" /></label>
-          <div class="two-col">
-            <label>上下文窗口<input id="contextSize" type="number" min="512" step="512" /></label>
-            <label>GPU Layers<input id="gpuLayers" type="number" min="0" step="1" /></label>
-            <label>线程数<input id="threads" type="number" min="1" step="1" /></label>
-            <label>Temperature<input id="temperature" type="number" min="0" max="2" step="0.1" /></label>
-          </div>
-          <div class="checks">
-            <label><input id="useGpu" type="checkbox" /> 使用 GPU 加载</label>
-            <label><input id="offloadKqv" type="checkbox" /> Offload K/Q/V</label>
-          </div>
-        </form>
-
-        <form id="cachePanel" class="panel wide">
-          <h2>缓存设置</h2>
-          <label>缓存存放位置</label>
-          <div class="path-row">
-            <input id="cacheDirectory" placeholder="默认：系统用户数据目录" />
-            <button id="chooseCacheDirectory" type="button">选择</button>
-          </div>
-          <label>删除策略
-            <select id="cacheCleanupStrategy">
-              <option value="none">不自动删除</option>
-              <option value="startup">每次重启时删除</option>
-              <option value="age">超过指定天数后删除</option>
-              <option value="size">超过指定容量后删除</option>
+          <section class="field">
+            <label for="provider">AI 来源</label>
+            <select id="provider">
+              <option value="lmstudio">LM Studio</option>
+              <option value="api">在线 API</option>
+              <option value="local">本地模型</option>
             </select>
-          </label>
-          <div class="two-col">
-            <label>最大缓存容量 MB<input id="cacheMaxSizeMb" type="number" min="1" step="50" /></label>
-            <label>保留天数<input id="cacheMaxAgeDays" type="number" min="1" step="1" /></label>
-          </div>
-        </form>
-      </section>
+          </section>
 
-      <footer>
-        <span id="status"></span>
-        <button id="save">保存设置</button>
-      </footer>
+          <section class="field">
+            <label>响应模式</label>
+            <div class="checks compact">
+              <label><input id="thinkingMode" type="checkbox" /> 启用思考模式</label>
+              <label><input id="streamMode" type="checkbox" /> 流式输出</label>
+            </div>
+          </section>
+        </section>
+
+        <section class="settings-section" data-section="providers">
+          <header>
+            <h2>连接</h2>
+            <p>配置在线 API 或 LM Studio。</p>
+          </header>
+
+          <div class="settings-grid">
+            <form id="apiPanel" class="panel">
+              <h3>在线 API</h3>
+              <label>URL<input id="apiBaseUrl" placeholder="https://api.example.com/v1" /></label>
+              <label>API Key<input id="apiKey" type="password" placeholder="sk-..." /></label>
+              <label>模型名称<input id="apiModel" placeholder="gpt-4o-mini / qwen-vl-plus / ..." /></label>
+            </form>
+
+            <form id="lmPanel" class="panel">
+              <h3>LM Studio</h3>
+              <label>URL<input id="lmBaseUrl" placeholder="http://localhost:1234/v1" /></label>
+              <label>API Key<input id="lmApiKey" placeholder="lm-studio" /></label>
+              <label>模型名称<input id="lmModel" placeholder="在 LM Studio Server 中加载的模型名" /></label>
+            </form>
+          </div>
+        </section>
+
+        <section class="settings-section" data-section="local">
+          <header>
+            <h2>本地模型</h2>
+            <p>配置本地推理服务和模型加载参数。</p>
+          </header>
+
+          <form id="localPanel" class="panel">
+            <label>服务 URL<input id="localBaseUrl" placeholder="http://localhost:8080/v1" /></label>
+            <label>API Key<input id="localApiKey" placeholder="local" /></label>
+            <label>模型名称<input id="localModel" placeholder="local-model" /></label>
+            <label>模型路径<input id="localModelPath" placeholder="C:\\models\\model.gguf" /></label>
+            <label>后端<input id="localBackend" placeholder="llama.cpp server" /></label>
+            <label>启动命令<input id="localCommand" placeholder="llama-server -m C:\\models\\model.gguf --port 1234" /></label>
+            <div class="two-col">
+              <label>上下文窗口<input id="contextSize" type="number" min="512" step="512" /></label>
+              <label>GPU Layers<input id="gpuLayers" type="number" min="0" step="1" /></label>
+              <label>线程数<input id="threads" type="number" min="1" step="1" /></label>
+              <label>Temperature<input id="temperature" type="number" min="0" max="2" step="0.1" /></label>
+            </div>
+            <div class="checks">
+              <label><input id="useGpu" type="checkbox" /> 使用 GPU 加载</label>
+              <label><input id="offloadKqv" type="checkbox" /> Offload K/Q/V</label>
+            </div>
+          </form>
+        </section>
+
+        <section class="settings-section" data-section="cache">
+          <header>
+            <h2>缓存</h2>
+            <p>管理聊天记录、截图保存位置和自动清理策略。</p>
+          </header>
+
+          <form id="cachePanel" class="panel">
+            <label>缓存存放位置</label>
+            <div class="path-row">
+              <input id="cacheDirectory" />
+              <button id="chooseCacheDirectory" type="button">选择</button>
+            </div>
+            <p id="cacheDefaultPath" class="setting-hint"></p>
+
+            <label>删除策略
+              <select id="cacheCleanupStrategy">
+                <option value="none">不自动删除</option>
+                <option value="startup">每次重启时删除</option>
+                <option value="age">超过指定天数后删除</option>
+                <option value="size">超过指定容量后删除</option>
+              </select>
+            </label>
+            <div class="two-col">
+              <label>最大缓存容量 MB<input id="cacheMaxSizeMb" type="number" min="1" step="50" /></label>
+              <label>保留天数<input id="cacheMaxAgeDays" type="number" min="1" step="1" /></label>
+            </div>
+
+            <div class="danger-row">
+              <div>
+                <strong>清空记录</strong>
+                <p>删除所有缓存聊天记录和截图。</p>
+              </div>
+              <button id="clearCache" class="danger-button" type="button">清空记录</button>
+            </div>
+          </form>
+        </section>
+
+        <footer>
+          <span id="status"></span>
+          <button id="save">保存设置</button>
+        </footer>
+      </section>
     </main>
     <script src="./settings.js"></script>
   </body>

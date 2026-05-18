@@ -42,6 +42,8 @@ contextBridge.exposeInMainWorld("aimini", {
   getHistory: () => ipcRenderer.invoke("history:get"),
   getCacheRecords: () => ipcRenderer.invoke("cache:get"),
   openCachedImage: (filePath) => ipcRenderer.invoke("cache:open-image", filePath),
+  clearCacheRecords: () => ipcRenderer.invoke("cache:clear"),
+  onCacheUpdated: (callback) => ipcRenderer.on("cache:updated", () => callback()),
   getPreviewImage: () => ipcRenderer.invoke("image-preview:get"),
   onPreviewImageUpdated: (callback) => ipcRenderer.on("image-preview:updated", (_event, payload) => callback(payload)),
   onHistoryUpdated: (callback) => {

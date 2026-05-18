@@ -315,18 +315,69 @@ select {
   background: #f4f7f8;
 }
 
-.settings-shell {
-  max-width: 1040px;
-  margin: 0 auto;
+.settings-layout {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  min-height: 100vh;
+}
+
+.settings-sidebar {
+  border-right: 1px solid rgba(24, 39, 54, 0.12);
+  background: #ffffff;
+  padding: 22px 14px;
+}
+
+.settings-brand h1 {
+  margin: 0 0 6px;
+  font-size: 22px;
+}
+
+.settings-brand p {
+  margin: 0 0 20px;
+  color: #687483;
+  font-size: 13px;
+}
+
+.settings-nav {
+  display: grid;
+  gap: 6px;
+}
+
+.settings-tab {
+  height: 36px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #364554;
+  text-align: left;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.settings-tab.active,
+.settings-tab:hover {
+  background: #e6f5f2;
+  color: #176f63;
+}
+
+.settings-content {
   padding: 24px;
 }
 
-header h1 {
-  margin: 0 0 8px;
-  font-size: 26px;
+.settings-section {
+  display: none;
 }
 
-header p {
+.settings-section.active {
+  display: block;
+}
+
+.settings-section header h2 {
+  margin: 0 0 8px;
+  font-size: 24px;
+}
+
+.settings-section header p {
   margin: 0 0 22px;
   color: #5e6b78;
 }
@@ -356,7 +407,8 @@ header p {
   grid-column: 1 / -1;
 }
 
-.panel h2 {
+.panel h2,
+.panel h3 {
   margin: 0 0 14px;
   font-size: 18px;
 }
@@ -397,6 +449,43 @@ select {
   border: 1px solid rgba(24, 39, 54, 0.16);
   border-radius: 6px;
   background: #ffffff;
+  cursor: pointer;
+}
+
+.setting-hint {
+  margin: -4px 0 14px;
+  color: #687483;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.danger-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+  border-top: 1px solid rgba(24, 39, 54, 0.1);
+  padding-top: 14px;
+}
+
+.danger-row strong {
+  color: #8a1e2b;
+}
+
+.danger-row p {
+  margin: 4px 0 0;
+  color: #687483;
+  font-size: 13px;
+}
+
+.danger-button {
+  height: 36px;
+  min-width: 90px;
+  border: 1px solid rgba(160, 32, 48, 0.35);
+  border-radius: 6px;
+  background: #fff5f6;
+  color: #8a1e2b;
   cursor: pointer;
 }
 

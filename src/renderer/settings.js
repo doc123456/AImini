@@ -28,7 +28,21 @@ const fields = {
 
 const saveButton = document.getElementById("save");
 const chooseCacheDirectoryButton = document.getElementById("chooseCacheDirectory");
+const clearCacheButton = document.getElementById("clearCache");
+const cacheDefaultPath = document.getElementById("cacheDefaultPath");
 const status = document.getElementById("status");
+
+document.querySelectorAll(".settings-tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    const tabName = tab.dataset.tab;
+    document.querySelectorAll(".settings-tab").forEach((item) => {
+      item.classList.toggle("active", item === tab);
+    });
+    document.querySelectorAll(".settings-section").forEach((section) => {
+      section.classList.toggle("active", section.dataset.section === tabName);
+    });
+  });
+});
 
 function setForm(config) {
   fields.provider.value = config.provider;
@@ -53,6 +67,8 @@ function setForm(config) {
   fields.thinkingMode.checked = config.behavior?.thinkingMode !== false;
   fields.streamMode.checked = config.behavior?.stream !== false;
   fields.cacheDirectory.value = config.cache?.directory || "";
+  fields.cacheDirectory.placeholder = config.cache?.defaultDirectory || "";
+  cacheDefaultPath.textContent = `默认位置：${config.cache?.defaultDirectory || ""}`;
   fields.cacheCleanupStrategy.value = config.cache?.cleanupStrategy || "size";
   fields.cacheMaxSizeMb.value = config.cache?.maxSizeMb || 500;
   fields.cacheMaxAgeDays.value = config.cache?.maxAgeDays || 30;
@@ -102,6 +118,12 @@ function getForm() {
 chooseCacheDirectoryButton.addEventListener("click", async () => {
   const directory = await window.aimini.selectCacheDirectory();
   if (directory) fields.cacheDirectory.value = directory;
+});
+
+clearCacheButton.addEventListener("click", async () => {
+  const cleared = await window.aimini.clearCacheRecords();
+  status.textContent = cleared ? "缓存记录已清空" : "已取消清空";
+  setTimeout(() => { status.textContent = ""; }, 1800);
 });
 
 saveButton.addEventListener("click", async () => {

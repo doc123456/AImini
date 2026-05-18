@@ -321,6 +321,15 @@ function saveConfig(config) {
   cleanupCache(false);
 }
 
+function getConfigForView() {
+  const config = ensureConfig();
+  return mergeConfig(config, {
+    cache: {
+      defaultDirectory: path.join(app.getPath("userData"), "cache")
+    }
+  });
+}
+
 function createFloatingWindow() {
   const display = screen.getPrimaryDisplay().workArea;
   const { width, height } = FLOATING_SIZES.normal;
@@ -358,9 +367,9 @@ function createSettingsWindow() {
   }
 
   settingsWindow = new BrowserWindow({
-    width: 780,
-    height: 680,
-    minWidth: 680,
+    width: 920,
+    height: 720,
+    minWidth: 820,
     minHeight: 560,
     title: "AImini 设置",
     icon: getAppIcon(),
@@ -690,10 +699,10 @@ async function requestModel({ prompt, screenshots, stream, onDelta }) {
   return data.choices?.[0]?.message?.content || "模型没有返回文本内容。";
 }
 
-ipcMain.handle("settings:get", () => ensureConfig());
+ipcMain.handle("settings:get", () => getConfigForView());
 ipcMain.handle("settings:save", (_event, config) => {
   saveConfig(config);
-  return ensureConfig();
+  return getConfigForView();
 });
 ipcMain.handle("cache:select-directory", async () => {
   const result = await dialog.showOpenDialog({
@@ -701,6 +710,21 @@ ipcMain.handle("cache:select-directory", async () => {
     properties: ["openDirectory", "createDirectory"]
   });
   return result.canceled ? "" : result.filePaths[0];
+});
+ipcMain.handle("cache:clear", async () => {
+  const result = await dialog.showMessageBox(settingsWindow || cacheWindow || floatingWindow, {
+    type: "warning",
+    buttons: ["取消", "清空记录"],
+    defaultId: 0,
+    cancelId: 0,
+    title: "清空缓存记录",
+    message: "确定要清空所有缓存聊天记录和截图吗？",
+    detail: "此操作只会删除 AImini 的 records.json 和 screenshots/ 中的截图，无法撤销。"
+  });
+  if (result.response !== 1) return false;
+  clearCacheFiles();
+  cacheWindow?.webContents.send("cache:updated");
+  return true;
 });
 
 ipcMain.handle("history:get", () => history);
