@@ -23,6 +23,24 @@ AImini 是一个面向 Windows 的轻量级桌面悬浮 AI 助手。它可以常
 - 支持本地模型参数配置，包括模型路径、上下文窗口、GPU、GPU layers、offload、线程数、temperature 等
 - 支持思考模式开关，并在关闭时尝试使用 `/no_think`、`enable_thinking=false` 等参数
 
+## 界面预览
+
+### 悬浮输入栏
+
+![AImini 悬浮输入栏](assets/floating-expanded.png)
+
+### 添加截图后的输入状态
+
+![AImini 添加截图后的输入状态](assets/with-screenshot.png)
+
+### 空闲自动收缩状态
+
+![AImini 空闲自动收缩状态](assets/collapsed-button.png)
+
+### 设置页面
+
+![AImini 设置页面](assets/settings.png)
+
 ## 运行环境
 
 - Windows 10 / Windows 11
@@ -139,6 +157,24 @@ The goal of AImini is to provide an always-available AI tool that does not inter
 - OpenAI-compatible API support
 - Local model runtime parameter settings, including model path, context size, GPU, GPU layers, offload, threads, and temperature
 - Thinking-mode toggle with `/no_think`, `enable_thinking=false`, and related request parameters where supported
+
+## Screenshots
+
+### Floating Input Bar
+
+![AImini floating input bar](assets/floating-expanded.png)
+
+### Input State with Screenshot
+
+![AImini input state with screenshot](assets/with-screenshot.png)
+
+### Auto-Collapsed State
+
+![AImini auto-collapsed state](assets/collapsed-button.png)
+
+### Settings Page
+
+![AImini settings page](assets/settings.png)
 
 ## Requirements
 
