@@ -15,7 +15,7 @@ let capturePreviewDataUrl = "";
 const FLOATING_SIZES = {
   collapsed: { width: 42, height: 42 },
   normal: { width: 600, height: 62 },
-  preview: { width: 600, height: 131 },
+  preview: { width: 600, height: 151 },
   history: { width: 600, height: 399 }
 };
 

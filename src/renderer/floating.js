@@ -97,9 +97,13 @@ function renderHistory() {
     <article class="history-item">
       <div class="time">${escapeHtml(item.createdAt)}</div>
       <div class="question">${item.hasScreenshot ? `<span class="mini-image">▧ ${item.screenshotCount || 1}</span>` : ""}${escapeHtml(item.prompt)}</div>
-      <div class="answer">${escapeHtml(stripThinking(item.answer))}</div>
+      <div class="answer markdown-body">${renderMarkdown(stripThinking(item.answer))}</div>
     </article>
   `).join("");
+}
+
+function renderMarkdown(text) {
+  return window.aimini.renderMarkdown(text);
 }
 
 function stripThinking(text) {
@@ -114,7 +118,8 @@ function showPreview(text) {
   const visibleText = stripThinking(text);
   if (!visibleText) return;
   previewPanel.hidden = false;
-  previewPanel.textContent = visibleText.split(/\r?\n/).slice(-3).join("\n");
+  previewPanel.innerHTML = renderMarkdown(visibleText);
+  previewPanel.scrollTop = previewPanel.scrollHeight;
   window.aimini.setPreview(true);
   resetIdleTimer();
 }
@@ -122,7 +127,7 @@ function showPreview(text) {
 function collapsePreview() {
   clearTimeout(previewTimer);
   previewPanel.hidden = true;
-  previewPanel.textContent = "";
+  previewPanel.innerHTML = "";
   window.aimini.setPreview(false);
   resetIdleTimer();
 }
@@ -218,7 +223,7 @@ function sendMessage() {
   clearPendingScreenshots();
   upsertHistoryItem(localItem);
   previewPanel.hidden = false;
-  previewPanel.textContent = "正在回答...";
+  previewPanel.innerHTML = renderMarkdown("正在回答...");
   window.aimini.setPreview(true);
   resetIdleTimer();
 

@@ -1,4 +1,13 @@
 const { contextBridge, ipcRenderer } = require("electron");
+const MarkdownIt = require("markdown-it");
+const markdownItKatex = require("markdown-it-katex");
+
+const markdown = new MarkdownIt({
+  html: false,
+  linkify: true,
+  breaks: true,
+  typographer: true
+}).use(markdownItKatex);
 
 contextBridge.exposeInMainWorld("aimini", {
   captureScreenshot: () => ipcRenderer.invoke("assistant:capture"),
@@ -19,5 +28,6 @@ contextBridge.exposeInMainWorld("aimini", {
     ipcRenderer.on("history:updated", (_event, history) => callback(history));
   },
   getSettings: () => ipcRenderer.invoke("settings:get"),
-  saveSettings: (settings) => ipcRenderer.invoke("settings:save", settings)
+  saveSettings: (settings) => ipcRenderer.invoke("settings:save", settings),
+  renderMarkdown: (text) => markdown.render(String(text || ""))
 });
