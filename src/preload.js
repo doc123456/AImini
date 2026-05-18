@@ -1,13 +1,29 @@
 const { contextBridge, ipcRenderer } = require("electron");
-const MarkdownIt = require("markdown-it");
-const markdownItKatex = require("markdown-it-katex");
 
-const markdown = new MarkdownIt({
-  html: false,
-  linkify: true,
-  breaks: true,
-  typographer: true
-}).use(markdownItKatex);
+let markdown;
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+try {
+  const MarkdownIt = require("markdown-it");
+  const markdownItKatex = require("markdown-it-katex");
+  markdown = new MarkdownIt({
+    html: false,
+    linkify: true,
+    breaks: true,
+    typographer: true
+  }).use(markdownItKatex);
+} catch (error) {
+  markdown = {
+    render: (text) => `<p>${escapeHtml(text).replace(/\r?\n/g, "<br>")}</p>`
+  };
+}
 
 contextBridge.exposeInMainWorld("aimini", {
   captureScreenshot: () => ipcRenderer.invoke("assistant:capture"),

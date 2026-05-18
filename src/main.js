@@ -120,7 +120,8 @@ function createFloatingWindow() {
     show: false,
     icon: getAppIcon(),
     webPreferences: {
-      preload: path.join(__dirname, "preload.js")
+      preload: path.join(__dirname, "preload.js"),
+      sandbox: false
     }
   });
 
@@ -143,7 +144,8 @@ function createSettingsWindow() {
     title: "AImini 设置",
     icon: getAppIcon(),
     webPreferences: {
-      preload: path.join(__dirname, "preload.js")
+      preload: path.join(__dirname, "preload.js"),
+      sandbox: false
     }
   });
 
@@ -197,7 +199,8 @@ function requestCaptureSelection(display, previewDataUrl) {
     fullscreenable: false,
     backgroundColor: "#FAFCFF",
     webPreferences: {
-      preload: path.join(__dirname, "preload.js")
+      preload: path.join(__dirname, "preload.js"),
+      sandbox: false
     }
   });
 
