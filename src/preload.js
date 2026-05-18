@@ -49,5 +49,6 @@ contextBridge.exposeInMainWorld("aimini", {
   },
   getSettings: () => ipcRenderer.invoke("settings:get"),
   saveSettings: (settings) => ipcRenderer.invoke("settings:save", settings),
+  selectCacheDirectory: () => ipcRenderer.invoke("cache:select-directory"),
   renderMarkdown: (text) => markdown.render(String(text || ""))
 });

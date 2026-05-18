@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, desktopCapturer, nativeImage, screen } = require("electron");
+const { app, BrowserWindow, Tray, Menu, ipcMain, desktopCapturer, nativeImage, screen, dialog } = require("electron");
 const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
@@ -16,6 +16,7 @@ let localProcess;
 let captureWindow;
 let captureSelectionResolver;
 let capturePreviewDataUrl = "";
+let startupCacheCleanupApplied = false;
 
 const FLOATING_SIZES = {
   collapsed: { width: 42, height: 42 },
@@ -63,6 +64,12 @@ const defaultConfig = {
   behavior: {
     thinkingMode: true,
     stream: true
+  },
+  cache: {
+    directory: "",
+    cleanupStrategy: "size",
+    maxSizeMb: 500,
+    maxAgeDays: 30
   }
 };
 
@@ -92,13 +99,108 @@ function ensureConfig() {
 }
 
 function ensureCache() {
-  cacheDir = path.join(app.getPath("userData"), "cache");
+  const config = ensureConfig();
+  cacheDir = config.cache?.directory || path.join(app.getPath("userData"), "cache");
   screenshotsDir = path.join(cacheDir, "screenshots");
   recordsPath = path.join(cacheDir, "records.json");
   fs.mkdirSync(screenshotsDir, { recursive: true });
   if (!fs.existsSync(recordsPath)) {
     fs.writeFileSync(recordsPath, "[]");
   }
+}
+
+function safeDeleteFile(filePath) {
+  try {
+    if (filePath && fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch {
+    // Best effort cleanup.
+  }
+}
+
+function clearCacheFiles() {
+  ensureCache();
+  const records = readCacheRecords();
+  for (const record of records) {
+    for (const screenshot of record.screenshots || []) {
+      safeDeleteFile(screenshot);
+    }
+  }
+  writeCacheRecords([]);
+}
+
+function getRecordTime(record) {
+  if (Number.isFinite(record.createdAtMs)) return record.createdAtMs;
+  const idTime = Number(record.id);
+  if (Number.isFinite(idTime)) return idTime;
+  const parsed = Date.parse(record.createdAt || "");
+  return Number.isFinite(parsed) ? parsed : Date.now();
+}
+
+function getRecordSize(record) {
+  let total = Buffer.byteLength(JSON.stringify(record), "utf8");
+  for (const screenshot of record.screenshots || []) {
+    try {
+      total += fs.statSync(screenshot).size;
+    } catch {
+      // Ignore missing files.
+    }
+  }
+  return total;
+}
+
+function cleanupCache(isStartup = false) {
+  ensureCache();
+  const config = ensureConfig();
+  const strategy = config.cache?.cleanupStrategy || "size";
+  const maxAgeDays = Math.max(1, Number(config.cache?.maxAgeDays || 30));
+  const maxSizeBytes = Math.max(1, Number(config.cache?.maxSizeMb || 500)) * 1024 * 1024;
+  let records = readCacheRecords();
+  const removed = [];
+
+  if (strategy === "startup" && isStartup && !startupCacheCleanupApplied) {
+    startupCacheCleanupApplied = true;
+    clearCacheFiles();
+    return;
+  }
+
+  if (strategy === "startup") {
+    return;
+  }
+
+  if (strategy === "age") {
+    const cutoff = Date.now() - maxAgeDays * 24 * 60 * 60 * 1000;
+    const kept = [];
+    for (const record of records) {
+      if (getRecordTime(record) < cutoff) removed.push(record);
+      else kept.push(record);
+    }
+    records = kept;
+  }
+
+  if (strategy === "size") {
+    let used = 0;
+    const kept = [];
+    const sorted = [...records].sort((a, b) => getRecordTime(b) - getRecordTime(a));
+    for (const record of sorted) {
+      const size = getRecordSize(record);
+      if (used + size <= maxSizeBytes) {
+        used += size;
+        kept.push(record);
+      } else {
+        removed.push(record);
+      }
+    }
+    records = kept;
+  }
+
+  for (const record of removed) {
+    for (const screenshot of record.screenshots || []) {
+      safeDeleteFile(screenshot);
+    }
+  }
+  writeCacheRecords(records);
 }
 
 function readCacheRecords() {
@@ -138,10 +240,12 @@ function cacheConversation(item, screenshots) {
     prompt: item.prompt || "",
     answer: item.answer || "",
     createdAt: item.createdAt || new Date().toLocaleString(),
+    createdAtMs: Number(item.id) || Date.now(),
     screenshotCount: screenshotPaths.length,
     screenshots: screenshotPaths
   });
   writeCacheRecords(records);
+  cleanupCache(false);
 }
 
 function imageFileToDataUrl(filePath) {
@@ -213,6 +317,8 @@ function mergeConfig(base, incoming) {
 
 function saveConfig(config) {
   fs.writeFileSync(configPath, JSON.stringify(mergeConfig(defaultConfig, config), null, 2));
+  ensureCache();
+  cleanupCache(false);
 }
 
 function createFloatingWindow() {
@@ -589,6 +695,13 @@ ipcMain.handle("settings:save", (_event, config) => {
   saveConfig(config);
   return ensureConfig();
 });
+ipcMain.handle("cache:select-directory", async () => {
+  const result = await dialog.showOpenDialog({
+    title: "选择缓存存放位置",
+    properties: ["openDirectory", "createDirectory"]
+  });
+  return result.canceled ? "" : result.filePaths[0];
+});
 
 ipcMain.handle("history:get", () => history);
 ipcMain.handle("cache:get", () => getCacheForView());
@@ -687,6 +800,7 @@ ipcMain.on("assistant:ask-stream", async (event, message) => {
 app.whenReady().then(() => {
   ensureConfig();
   ensureCache();
+  cleanupCache(true);
   createFloatingWindow();
   createTray();
 });

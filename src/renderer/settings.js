@@ -19,10 +19,15 @@ const fields = {
   useGpu: document.getElementById("useGpu"),
   offloadKqv: document.getElementById("offloadKqv"),
   thinkingMode: document.getElementById("thinkingMode"),
-  streamMode: document.getElementById("streamMode")
+  streamMode: document.getElementById("streamMode"),
+  cacheDirectory: document.getElementById("cacheDirectory"),
+  cacheCleanupStrategy: document.getElementById("cacheCleanupStrategy"),
+  cacheMaxSizeMb: document.getElementById("cacheMaxSizeMb"),
+  cacheMaxAgeDays: document.getElementById("cacheMaxAgeDays")
 };
 
 const saveButton = document.getElementById("save");
+const chooseCacheDirectoryButton = document.getElementById("chooseCacheDirectory");
 const status = document.getElementById("status");
 
 function setForm(config) {
@@ -47,6 +52,10 @@ function setForm(config) {
   fields.offloadKqv.checked = config.local.offloadKqv;
   fields.thinkingMode.checked = config.behavior?.thinkingMode !== false;
   fields.streamMode.checked = config.behavior?.stream !== false;
+  fields.cacheDirectory.value = config.cache?.directory || "";
+  fields.cacheCleanupStrategy.value = config.cache?.cleanupStrategy || "size";
+  fields.cacheMaxSizeMb.value = config.cache?.maxSizeMb || 500;
+  fields.cacheMaxAgeDays.value = config.cache?.maxAgeDays || 30;
 }
 
 function getForm() {
@@ -80,9 +89,20 @@ function getForm() {
     behavior: {
       thinkingMode: fields.thinkingMode.checked,
       stream: fields.streamMode.checked
+    },
+    cache: {
+      directory: fields.cacheDirectory.value.trim(),
+      cleanupStrategy: fields.cacheCleanupStrategy.value,
+      maxSizeMb: Number(fields.cacheMaxSizeMb.value || 500),
+      maxAgeDays: Number(fields.cacheMaxAgeDays.value || 30)
     }
   };
 }
+
+chooseCacheDirectoryButton.addEventListener("click", async () => {
+  const directory = await window.aimini.selectCacheDirectory();
+  if (directory) fields.cacheDirectory.value = directory;
+});
 
 saveButton.addEventListener("click", async () => {
   const saved = await window.aimini.saveSettings(getForm());

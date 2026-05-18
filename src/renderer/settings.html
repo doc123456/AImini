@@ -64,6 +64,27 @@
             <label><input id="offloadKqv" type="checkbox" /> Offload K/Q/V</label>
           </div>
         </form>
+
+        <form id="cachePanel" class="panel wide">
+          <h2>缓存设置</h2>
+          <label>缓存存放位置</label>
+          <div class="path-row">
+            <input id="cacheDirectory" placeholder="默认：系统用户数据目录" />
+            <button id="chooseCacheDirectory" type="button">选择</button>
+          </div>
+          <label>删除策略
+            <select id="cacheCleanupStrategy">
+              <option value="none">不自动删除</option>
+              <option value="startup">每次重启时删除</option>
+              <option value="age">超过指定天数后删除</option>
+              <option value="size">超过指定容量后删除</option>
+            </select>
+          </label>
+          <div class="two-col">
+            <label>最大缓存容量 MB<input id="cacheMaxSizeMb" type="number" min="1" step="50" /></label>
+            <label>保留天数<input id="cacheMaxAgeDays" type="number" min="1" step="1" /></label>
+          </div>
+        </form>
       </section>
 
       <footer>

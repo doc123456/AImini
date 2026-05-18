@@ -385,6 +385,21 @@ select {
   gap: 12px;
 }
 
+.path-row {
+  display: grid;
+  grid-template-columns: 1fr 86px;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.path-row button {
+  height: 38px;
+  border: 1px solid rgba(24, 39, 54, 0.16);
+  border-radius: 6px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
 .checks {
   display: flex;
   gap: 18px;
