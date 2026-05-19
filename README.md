@@ -1,5 +1,18 @@
 # AImini
 
+## v0.2.0 Current Highlights
+
+- Built-in Windows x64 CPU `llama-server` runtime based on llama.cpp.
+- Built-in model loader for local `.gguf` models, without requiring LM Studio.
+- Optional `mmproj` selection for local vision models and screenshot input.
+- Real-time local model loading status, stop-model control, and llama-server logs.
+- Automatic safe path handling for non-ASCII model directories.
+- Screenshot input is resized before sending to reduce local vision-model latency.
+- Local screenshot requests now warn early when `mmproj` is missing.
+- Markdown and KaTeX rendering, conversation context, cache records, screenshot preview, and cache cleanup settings.
+
+For GitHub Release text, see `RELEASE_NOTES_v0.2.0.md`.
+
 ## 中文说明
 
 AImini 是一个面向 Windows 的轻量级桌面悬浮 AI 助手。它可以常驻在屏幕角落，支持文字提问、框选截图提问、多图输入、流式回复、历史记录、系统托盘控制，以及 LM Studio / OpenAI-compatible API 接入。

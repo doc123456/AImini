@@ -54,6 +54,7 @@ contextBridge.exposeInMainWorld("aimini", {
   selectLocalModel: () => ipcRenderer.invoke("local:select-model"),
   selectLocalMmproj: () => ipcRenderer.invoke("local:select-mmproj"),
   loadLocalModel: (settings) => ipcRenderer.invoke("local:load-model", settings),
+  stopLocalModel: () => ipcRenderer.invoke("local:stop-model"),
   getLocalLoadStatus: () => ipcRenderer.invoke("local:get-load-status"),
   onLocalLoadStatus: (callback) => {
     const listener = (_event, payload) => callback(payload);

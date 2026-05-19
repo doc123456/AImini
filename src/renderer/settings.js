@@ -24,6 +24,7 @@ const chooseLocalModelButton = document.getElementById("chooseLocalModel");
 const chooseLocalMmprojButton = document.getElementById("chooseLocalMmproj");
 const clearLocalMmprojButton = document.getElementById("clearLocalMmproj");
 const loadLocalModelButton = document.getElementById("loadLocalModel");
+const stopLocalModelButton = document.getElementById("stopLocalModel");
 const localLoadStatus = document.getElementById("localLoadStatus");
 const localLoadLog = document.getElementById("localLoadLog");
 const chooseCacheDirectoryButton = document.getElementById("chooseCacheDirectory");
@@ -38,6 +39,7 @@ function renderLocalLoadState(state = {}) {
   localLoadStatus.textContent = statusText;
   localLoadStatus.dataset.status = state.status || "idle";
   loadLocalModelButton.disabled = state.status === "loading";
+  stopLocalModelButton.disabled = state.status !== "loading" && state.status !== "ready";
   loadLocalModelButton.textContent = state.status === "loading" ? "加载中..." : "加载模型";
   localLoadLog.textContent = (state.logs || []).slice(-80).join("\n");
   localLoadLog.scrollTop = localLoadLog.scrollHeight;
@@ -149,6 +151,11 @@ loadLocalModelButton.addEventListener("click", async () => {
       logs: [error.stack || error.message || String(error)]
     });
   }
+});
+
+stopLocalModelButton.addEventListener("click", async () => {
+  const state = await window.aimini.stopLocalModel();
+  renderLocalLoadState(state);
 });
 
 chooseCacheDirectoryButton.addEventListener("click", async () => {

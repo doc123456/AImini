@@ -741,6 +741,20 @@ function appendLocalRuntimeLog(text) {
   });
 }
 
+function stopLocalRuntime(message = "模型已停止") {
+  if (localProcess) {
+    localProcess.removeAllListeners("exit");
+    localProcess.kill();
+    localProcess = null;
+  }
+
+  return emitLocalRuntimeState({
+    status: "idle",
+    message,
+    ready: false
+  });
+}
+
 async function waitForLocalRuntime(baseUrl, apiKey) {
   const modelsUrl = `${baseUrl.replace(/\/$/, "")}/models`;
   const deadline = Date.now() + 10 * 60 * 1000;
@@ -850,6 +864,9 @@ async function ensureLocalRuntime(config) {
 
 function createUserContent({ prompt, screenshots, config }) {
   const imageList = Array.isArray(screenshots) ? screenshots.filter(Boolean) : [];
+  if (config.provider === "local" && imageList.length && !config.local?.mmprojPath) {
+    throw new Error("当前内置模型加载器未配置视觉投影文件 mmproj，无法处理截图。请在设置中选择匹配的 mmproj 文件，或先移除截图后再发送。");
+  }
   let userText = prompt || (imageList.length ? "请分析这些截图。" : "");
   if (config.behavior?.thinkingMode === false) {
     userText = `${userText}\n\n/no_think`.trim();
@@ -1030,6 +1047,7 @@ ipcMain.handle("local:load-model", async (_event, config) => {
     });
   }
 });
+ipcMain.handle("local:stop-model", () => stopLocalRuntime());
 ipcMain.handle("cache:select-directory", async () => {
   const result = await dialog.showOpenDialog({
     title: "选择缓存存放位置",
@@ -1168,8 +1186,5 @@ app.on("window-all-closed", (event) => {
 });
 
 app.on("before-quit", () => {
-  if (localProcess) {
-    localProcess.kill();
-    localProcess = null;
-  }
+  stopLocalRuntime("应用退出，模型已停止");
 });

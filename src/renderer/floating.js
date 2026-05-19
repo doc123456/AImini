@@ -82,6 +82,28 @@ function addPendingScreenshot(base64) {
   updateScreenshotBadge();
 }
 
+function resizeScreenshot(base64, maxSide = 1280) {
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => {
+      const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+      if (scale >= 1) {
+        resolve(base64);
+        return;
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      const context = canvas.getContext("2d");
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/png").replace(/^data:image\/png;base64,/, ""));
+    };
+    image.onerror = () => resolve(base64);
+    image.src = `data:image/png;base64,${base64}`;
+  });
+}
+
 function clearPendingScreenshots() {
   pendingScreenshots = [];
   updateScreenshotBadge();
@@ -195,10 +217,10 @@ function upsertHistoryItem(item) {
   renderHistory();
 }
 
-function sendMessage() {
+async function sendMessage() {
   wakeFromButton();
   const prompt = promptInput.value.trim();
-  if (!prompt && !pendingScreenshots.length) return;
+  if ((!prompt && !pendingScreenshots.length) || streaming) return;
   previewMuted = false;
   streaming = true;
   if (expanded) {
@@ -209,7 +231,7 @@ function sendMessage() {
   }
 
   const requestId = Date.now();
-  const screenshots = [...pendingScreenshots];
+  const screenshots = await Promise.all(pendingScreenshots.map((screenshot) => resizeScreenshot(screenshot)));
   const localItem = {
     id: requestId,
     createdAt: new Date().toLocaleString(),
