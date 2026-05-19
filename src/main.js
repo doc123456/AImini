@@ -1,7 +1,8 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, desktopCapturer, nativeImage, screen, dialog } = require("electron");
+const { app, BrowserWindow, Tray, Menu, ipcMain, desktopCapturer, nativeImage, screen, dialog, shell } = require("electron");
 const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 
 let floatingWindow;
 let settingsWindow;
@@ -13,6 +14,12 @@ let cacheDir;
 let recordsPath;
 let screenshotsDir;
 let localProcess;
+let localRuntimeState = {
+  status: "idle",
+  message: "未加载模型",
+  ready: false,
+  logs: []
+};
 let captureWindow;
 let captureSelectionResolver;
 let capturePreviewDataUrl = "";
@@ -50,13 +57,14 @@ const defaultConfig = {
     enabled: false,
     baseUrl: "http://localhost:8080/v1",
     apiKey: "local",
-    model: "local-model",
+    model: "",
     modelPath: "",
-    backend: "llama.cpp server",
-    useGpu: true,
+    mmprojPath: "",
+    backend: "内置 llama.cpp CPU",
+    useGpu: false,
     contextSize: 4096,
-    gpuLayers: 32,
-    offloadKqv: true,
+    gpuLayers: 0,
+    offloadKqv: false,
     threads: 8,
     temperature: 0.7,
     command: ""
@@ -84,6 +92,10 @@ function getAppIcon() {
   return nativeImage.createFromDataURL(trayIconDataUrl);
 }
 
+function getDefaultCacheDir() {
+  return path.join(app.getPath("userData"), "AIminiRecords");
+}
+
 function ensureConfig() {
   configPath = path.join(app.getPath("userData"), "settings.json");
   if (!fs.existsSync(configPath)) {
@@ -100,12 +112,38 @@ function ensureConfig() {
 
 function ensureCache() {
   const config = ensureConfig();
-  cacheDir = config.cache?.directory || path.join(app.getPath("userData"), "cache");
+  cacheDir = config.cache?.directory || getDefaultCacheDir();
   screenshotsDir = path.join(cacheDir, "screenshots");
   recordsPath = path.join(cacheDir, "records.json");
   fs.mkdirSync(screenshotsDir, { recursive: true });
   if (!fs.existsSync(recordsPath)) {
     fs.writeFileSync(recordsPath, "[]");
+  }
+}
+
+function getLegacyCacheDir() {
+  return path.join(app.getPath("userData"), "cache");
+}
+
+function migrateLegacyCacheIfNeeded() {
+  const config = ensureConfig();
+  if (config.cache?.directory) return;
+
+  const legacyDir = getLegacyCacheDir();
+  const legacyRecords = path.join(legacyDir, "records.json");
+  const newRecords = path.join(getDefaultCacheDir(), "records.json");
+  if (!fs.existsSync(legacyRecords) || fs.existsSync(newRecords)) return;
+
+  try {
+    const newDir = getDefaultCacheDir();
+    fs.mkdirSync(path.join(newDir, "screenshots"), { recursive: true });
+    fs.copyFileSync(legacyRecords, newRecords);
+    const legacyScreenshots = path.join(legacyDir, "screenshots");
+    if (fs.existsSync(legacyScreenshots)) {
+      fs.cpSync(legacyScreenshots, path.join(newDir, "screenshots"), { recursive: true, force: false });
+    }
+  } catch {
+    // Keep running even if migration fails.
   }
 }
 
@@ -325,7 +363,7 @@ function getConfigForView() {
   const config = ensureConfig();
   return mergeConfig(config, {
     cache: {
-      defaultDirectory: path.join(app.getPath("userData"), "cache")
+      defaultDirectory: getDefaultCacheDir()
     }
   });
 }
@@ -519,7 +557,7 @@ function resolveEndpoint(config) {
     return {
       baseUrl: config.local.baseUrl || "http://localhost:8080/v1",
       apiKey: config.local.apiKey || "local",
-      model: config.local.model || "local-model"
+      model: getLocalModelAlias(config)
     };
   }
 
@@ -538,23 +576,276 @@ function resolveEndpoint(config) {
   return null;
 }
 
-async function ensureLocalRuntime(config) {
-  if (config.provider !== "local" || localProcess || !config.local.command) {
-    return;
+function getBundledLlamaRuntimeDir() {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, "llama.cpp", "cpu");
+  }
+  return path.join(app.getAppPath(), "resources", "llama.cpp", "cpu");
+}
+
+function getBundledLlamaServerPath() {
+  return path.join(getBundledLlamaRuntimeDir(), "llama-server.exe");
+}
+
+function getEndpointUrl(baseUrl) {
+  try {
+    return new URL(baseUrl || "http://localhost:8080/v1");
+  } catch {
+    return new URL("http://localhost:8080/v1");
+  }
+}
+
+function getLocalServerOptions(config) {
+  const endpointUrl = getEndpointUrl(config.local.baseUrl);
+  const port = Number(endpointUrl.port || (endpointUrl.protocol === "https:" ? 443 : 80));
+  const hostname = endpointUrl.hostname || "127.0.0.1";
+  return {
+    host: hostname === "localhost" ? "127.0.0.1" : hostname,
+    port: Number.isFinite(port) ? port : 8080
+  };
+}
+
+function getLocalModelAlias(config) {
+  if (config.local.model) return config.local.model;
+  if (config.local.modelPath) {
+    return path.basename(config.local.modelPath, path.extname(config.local.modelPath));
+  }
+  return "local-model";
+}
+
+function isAscii(value) {
+  return /^[\x00-\x7F]*$/.test(String(value || ""));
+}
+
+function getModelLinkRoot() {
+  return path.join(app.getPath("userData"), "ModelLinks");
+}
+
+function getRuntimeSafeModelPath(modelPath) {
+  const resolvedModelPath = path.resolve(modelPath);
+  if (isAscii(resolvedModelPath)) {
+    return resolvedModelPath;
   }
 
-  localProcess = spawn(config.local.command, {
-    shell: true,
-    cwd: app.getPath("home"),
-    windowsHide: true,
-    stdio: "ignore"
+  const filename = path.basename(resolvedModelPath);
+  if (!isAscii(filename)) {
+    throw new Error("模型文件名包含中文或特殊字符，请先把 GGUF 文件名改成英文后再加载。");
+  }
+
+  const modelDir = path.dirname(resolvedModelPath);
+  const linkRoot = getModelLinkRoot();
+  const linkName = crypto.createHash("sha1").update(modelDir).digest("hex").slice(0, 12);
+  const linkDir = path.join(linkRoot, linkName);
+
+  fs.mkdirSync(linkRoot, { recursive: true });
+  if (!fs.existsSync(linkDir)) {
+    fs.symlinkSync(modelDir, linkDir, "junction");
+  }
+
+  const linkedModelPath = path.join(linkDir, filename);
+  if (!fs.existsSync(linkedModelPath)) {
+    throw new Error(`无法为中文模型目录创建可加载路径，请把模型移动到纯英文目录后重试：${modelDir}`);
+  }
+
+  return linkedModelPath;
+}
+
+function getRuntimeSafeOptionalFilePath(filePath, label) {
+  if (!filePath) return "";
+  const resolvedFilePath = path.resolve(filePath);
+  if (!fs.existsSync(resolvedFilePath)) {
+    throw new Error(`${label}文件不存在：${filePath}`);
+  }
+  return getRuntimeSafeModelPath(resolvedFilePath);
+}
+
+function buildBundledLlamaArgs(config) {
+  if (!config.local.modelPath) {
+    throw new Error("请先在设置中选择本地 GGUF 模型路径。");
+  }
+
+  if (!fs.existsSync(config.local.modelPath)) {
+    throw new Error(`模型文件不存在：${config.local.modelPath}`);
+  }
+
+  const serverPath = getBundledLlamaServerPath();
+  if (!fs.existsSync(serverPath)) {
+    throw new Error(`内置 llama-server 不存在：${serverPath}`);
+  }
+
+  const { host, port } = getLocalServerOptions(config);
+  const modelPath = getRuntimeSafeModelPath(config.local.modelPath);
+  const mmprojPath = getRuntimeSafeOptionalFilePath(config.local.mmprojPath, "视觉投影");
+  const args = [
+    "--host", host,
+    "--port", String(port),
+    "--model", modelPath,
+    "--alias", getLocalModelAlias(config),
+    "--no-ui",
+    "--parallel", "1",
+    "--no-cont-batching"
+  ];
+
+  if (mmprojPath) {
+    args.push("--mmproj", mmprojPath);
+  }
+
+  const contextSize = Number(config.local.contextSize);
+  if (Number.isFinite(contextSize) && contextSize > 0) {
+    args.push("--ctx-size", String(contextSize));
+  }
+
+  const threads = Number(config.local.threads);
+  if (Number.isFinite(threads) && threads > 0) {
+    args.push("--threads", String(threads));
+    args.push("--threads-batch", String(threads));
+  }
+
+  if (config.local.apiKey) {
+    args.push("--api-key", config.local.apiKey);
+  }
+
+  return { serverPath, args };
+}
+
+function getLocalRuntimeState() {
+  return {
+    ...localRuntimeState,
+    logs: [...localRuntimeState.logs]
+  };
+}
+
+function emitLocalRuntimeState(patch = {}) {
+  localRuntimeState = {
+    ...localRuntimeState,
+    ...patch,
+    updatedAt: Date.now()
+  };
+  settingsWindow?.webContents.send("local:load-status", getLocalRuntimeState());
+  return getLocalRuntimeState();
+}
+
+function appendLocalRuntimeLog(text) {
+  const lines = String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (!lines.length) return;
+
+  const logs = [...localRuntimeState.logs, ...lines].slice(-160);
+  const lastLine = lines[lines.length - 1];
+  emitLocalRuntimeState({
+    logs,
+    status: localRuntimeState.ready ? "ready" : "loading",
+    message: lastLine
   });
+}
+
+async function waitForLocalRuntime(baseUrl, apiKey) {
+  const modelsUrl = `${baseUrl.replace(/\/$/, "")}/models`;
+  const deadline = Date.now() + 10 * 60 * 1000;
+  let lastError = "";
+
+  while (Date.now() < deadline) {
+    if (!localProcess) {
+      throw new Error("llama-server 已退出，请查看加载日志。");
+    }
+
+    try {
+      const response = await fetch(modelsUrl, {
+        headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
+      });
+      if (response.ok) {
+        emitLocalRuntimeState({
+          status: "ready",
+          message: "模型已加载，服务已就绪",
+          ready: true
+        });
+        return;
+      }
+      lastError = `${response.status} ${response.statusText}`;
+    } catch (error) {
+      lastError = error.message || String(error);
+    }
+
+    emitLocalRuntimeState({
+      status: "loading",
+      message: `正在等待本地服务启动：${lastError}`,
+      ready: false
+    });
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+
+  throw new Error(`本地 llama-server 启动超时：${lastError}`);
+}
+
+async function startLocalRuntime(config, { force = false } = {}) {
+  if (config.provider !== "local") {
+    throw new Error("请先把 AI 来源切换为内置模型加载器。");
+  }
+
+  if (localProcess && localRuntimeState.ready && !force) {
+    return getLocalRuntimeState();
+  }
+
+  if (localProcess && !force) {
+    await waitForLocalRuntime(config.local.baseUrl || "http://localhost:8080/v1", config.local.apiKey);
+    return getLocalRuntimeState();
+  }
+
+  if (localProcess && force) {
+    localProcess.removeAllListeners("exit");
+    localProcess.kill();
+    localProcess = null;
+  }
+
+  const { serverPath, args } = buildBundledLlamaArgs(config);
+  const safeModelPath = args[args.indexOf("--model") + 1];
+  const mmprojIndex = args.indexOf("--mmproj");
+  const safeMmprojPath = mmprojIndex >= 0 ? args[mmprojIndex + 1] : "";
+  emitLocalRuntimeState({
+    status: "loading",
+    message: "正在启动内置 llama-server...",
+    ready: false,
+    logs: [
+      config.local.modelPath !== safeModelPath
+        ? `模型路径包含非英文字符，已转换为运行时路径：${safeModelPath}`
+        : `模型路径：${safeModelPath}`,
+      safeMmprojPath
+        ? `视觉投影文件：${safeMmprojPath}`
+        : "未配置视觉投影文件，截图输入将不可用。",
+      `${serverPath} ${args.join(" ")}`
+    ]
+  });
+
+  localProcess = spawn(serverPath, args, {
+    shell: false,
+    cwd: getBundledLlamaRuntimeDir(),
+    windowsHide: true,
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+
+  localProcess.stdout?.on("data", (data) => appendLocalRuntimeLog(data.toString("utf8")));
+  localProcess.stderr?.on("data", (data) => appendLocalRuntimeLog(data.toString("utf8")));
 
   localProcess.once("exit", () => {
     localProcess = null;
+    emitLocalRuntimeState({
+      status: "error",
+      message: localRuntimeState.ready ? "llama-server 已退出" : "llama-server 已退出，模型没有加载成功",
+      ready: false
+    });
   });
 
-  await new Promise((resolve) => setTimeout(resolve, 1200));
+  await waitForLocalRuntime(config.local.baseUrl || "http://localhost:8080/v1", config.local.apiKey);
+  return getLocalRuntimeState();
+}
+
+async function ensureLocalRuntime(config) {
+  if (config.provider !== "local") {
+    return;
+  }
+  await startLocalRuntime(config, { force: false });
 }
 
 function createUserContent({ prompt, screenshots, config }) {
@@ -704,12 +995,54 @@ ipcMain.handle("settings:save", (_event, config) => {
   saveConfig(config);
   return getConfigForView();
 });
+ipcMain.handle("local:select-model", async () => {
+  const result = await dialog.showOpenDialog(settingsWindow || floatingWindow, {
+    title: "选择 GGUF 模型文件",
+    properties: ["openFile"],
+    filters: [
+      { name: "GGUF 模型", extensions: ["gguf"] },
+      { name: "所有文件", extensions: ["*"] }
+    ]
+  });
+  return result.canceled ? "" : result.filePaths[0];
+});
+ipcMain.handle("local:select-mmproj", async () => {
+  const result = await dialog.showOpenDialog(settingsWindow || floatingWindow, {
+    title: "选择视觉投影 mmproj 文件",
+    properties: ["openFile"],
+    filters: [
+      { name: "GGUF 视觉投影", extensions: ["gguf"] },
+      { name: "所有文件", extensions: ["*"] }
+    ]
+  });
+  return result.canceled ? "" : result.filePaths[0];
+});
+ipcMain.handle("local:get-load-status", () => getLocalRuntimeState());
+ipcMain.handle("local:load-model", async (_event, config) => {
+  const mergedConfig = mergeConfig(ensureConfig(), config || {});
+  try {
+    return await startLocalRuntime(mergedConfig, { force: true });
+  } catch (error) {
+    return emitLocalRuntimeState({
+      status: "error",
+      message: error.message || String(error),
+      ready: false
+    });
+  }
+});
 ipcMain.handle("cache:select-directory", async () => {
   const result = await dialog.showOpenDialog({
     title: "选择缓存存放位置",
     properties: ["openDirectory", "createDirectory"]
   });
   return result.canceled ? "" : result.filePaths[0];
+});
+ipcMain.handle("cache:open-directory", async () => {
+  ensureCache();
+  fs.mkdirSync(cacheDir, { recursive: true });
+  const error = await shell.openPath(cacheDir);
+  if (error) throw new Error(error);
+  return cacheDir;
 });
 ipcMain.handle("cache:clear", async () => {
   const result = await dialog.showMessageBox(settingsWindow || cacheWindow || floatingWindow, {
@@ -823,6 +1156,7 @@ ipcMain.on("assistant:ask-stream", async (event, message) => {
 
 app.whenReady().then(() => {
   ensureConfig();
+  migrateLegacyCacheIfNeeded();
   ensureCache();
   cleanupCache(true);
   createFloatingWindow();

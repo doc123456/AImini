@@ -16,7 +16,7 @@
         <nav class="settings-nav">
           <button class="settings-tab active" data-tab="general" type="button">通用</button>
           <button class="settings-tab" data-tab="providers" type="button">连接</button>
-          <button class="settings-tab" data-tab="local" type="button">本地模型</button>
+          <button class="settings-tab" data-tab="local" type="button">内置模型加载器</button>
           <button class="settings-tab" data-tab="cache" type="button">缓存</button>
         </nav>
       </aside>
@@ -33,7 +33,7 @@
             <select id="provider">
               <option value="lmstudio">LM Studio</option>
               <option value="api">在线 API</option>
-              <option value="local">本地模型</option>
+              <option value="local">内置模型加载器</option>
             </select>
           </section>
 
@@ -71,27 +71,33 @@
 
         <section class="settings-section" data-section="local">
           <header>
-            <h2>本地模型</h2>
-            <p>配置本地推理服务和模型加载参数。</p>
+            <h2>内置模型加载器</h2>
+            <p>使用 AImini 内置的 llama.cpp CPU 后端加载 GGUF 模型。</p>
           </header>
 
           <form id="localPanel" class="panel">
-            <label>服务 URL<input id="localBaseUrl" placeholder="http://localhost:8080/v1" /></label>
-            <label>API Key<input id="localApiKey" placeholder="local" /></label>
-            <label>模型名称<input id="localModel" placeholder="local-model" /></label>
-            <label>模型路径<input id="localModelPath" placeholder="C:\\models\\model.gguf" /></label>
-            <label>后端<input id="localBackend" placeholder="llama.cpp server" /></label>
-            <label>启动命令<input id="localCommand" placeholder="llama-server -m C:\\models\\model.gguf --port 1234" /></label>
+            <label>模型路径</label>
+            <div class="path-row model-path-row">
+              <input id="localModelPath" placeholder="C:\\models\\model.gguf" />
+              <button id="chooseLocalModel" type="button">选择</button>
+            </div>
+            <label>视觉投影文件</label>
+            <div class="path-row mmproj-path-row">
+              <input id="localMmprojPath" placeholder="可选：C:\\models\\mmproj-model.gguf" />
+              <button id="chooseLocalMmproj" type="button">选择</button>
+              <button id="clearLocalMmproj" type="button">清空</button>
+            </div>
+            <p class="setting-hint">截图输入需要匹配的 mmproj 文件；纯文本模型可以留空。</p>
             <div class="two-col">
               <label>上下文窗口<input id="contextSize" type="number" min="512" step="512" /></label>
-              <label>GPU Layers<input id="gpuLayers" type="number" min="0" step="1" /></label>
-              <label>线程数<input id="threads" type="number" min="1" step="1" /></label>
+              <label>CPU 线程数<input id="threads" type="number" min="1" step="1" /></label>
               <label>Temperature<input id="temperature" type="number" min="0" max="2" step="0.1" /></label>
             </div>
-            <div class="checks">
-              <label><input id="useGpu" type="checkbox" /> 使用 GPU 加载</label>
-              <label><input id="offloadKqv" type="checkbox" /> Offload K/Q/V</label>
+            <div class="model-load-row">
+              <button id="loadLocalModel" type="button">加载模型</button>
+              <span id="localLoadStatus">未加载模型</span>
             </div>
+            <pre id="localLoadLog" class="model-load-log"></pre>
           </form>
         </section>
 
@@ -102,11 +108,12 @@
           </header>
 
           <form id="cachePanel" class="panel">
-            <label>缓存存放位置</label>
-            <div class="path-row">
-              <input id="cacheDirectory" />
-              <button id="chooseCacheDirectory" type="button">选择</button>
-            </div>
+          <label>缓存存放位置</label>
+          <div class="path-row">
+            <input id="cacheDirectory" />
+            <button id="chooseCacheDirectory" type="button">选择</button>
+            <button id="openCacheDirectory" type="button">打开</button>
+          </div>
             <p id="cacheDefaultPath" class="setting-hint"></p>
 
             <label>删除策略

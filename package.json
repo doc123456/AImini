@@ -1,6 +1,6 @@
 {
   "name": "aimini",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Always-on-top floating AI assistant with screenshots, history, tray controls, and model settings.",
   "author": "AImini",
   "main": "src/main.js",
@@ -19,10 +19,20 @@
       "src/**/*",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "resources/llama.cpp/cpu",
+        "to": "llama.cpp/cpu",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
     "directories": {
       "output": "dist"
     },
     "win": {
+      "signAndEditExecutable": false,
       "target": [
         {
           "target": "portable",

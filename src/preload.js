@@ -51,6 +51,16 @@ contextBridge.exposeInMainWorld("aimini", {
   },
   getSettings: () => ipcRenderer.invoke("settings:get"),
   saveSettings: (settings) => ipcRenderer.invoke("settings:save", settings),
+  selectLocalModel: () => ipcRenderer.invoke("local:select-model"),
+  selectLocalMmproj: () => ipcRenderer.invoke("local:select-mmproj"),
+  loadLocalModel: (settings) => ipcRenderer.invoke("local:load-model", settings),
+  getLocalLoadStatus: () => ipcRenderer.invoke("local:get-load-status"),
+  onLocalLoadStatus: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("local:load-status", listener);
+    return () => ipcRenderer.removeListener("local:load-status", listener);
+  },
   selectCacheDirectory: () => ipcRenderer.invoke("cache:select-directory"),
+  openCacheDirectory: () => ipcRenderer.invoke("cache:open-directory"),
   renderMarkdown: (text) => markdown.render(String(text || ""))
 });

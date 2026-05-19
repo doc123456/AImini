@@ -313,18 +313,22 @@ select {
 
 .settings-page {
   background: #f4f7f8;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .settings-layout {
   display: grid;
   grid-template-columns: 190px 1fr;
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
 }
 
 .settings-sidebar {
   border-right: 1px solid rgba(24, 39, 54, 0.12);
   background: #ffffff;
   padding: 22px 14px;
+  overflow: hidden;
 }
 
 .settings-brand h1 {
@@ -362,6 +366,8 @@ select {
 
 .settings-content {
   padding: 24px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .settings-section {
@@ -439,9 +445,17 @@ select {
 
 .path-row {
   display: grid;
-  grid-template-columns: 1fr 86px;
+  grid-template-columns: 1fr 76px 76px;
   gap: 10px;
   margin-bottom: 12px;
+}
+
+.model-path-row {
+  grid-template-columns: 1fr 76px;
+}
+
+.mmproj-path-row {
+  grid-template-columns: 1fr 76px 76px;
 }
 
 .path-row button {
@@ -450,6 +464,58 @@ select {
   border-radius: 6px;
   background: #ffffff;
   cursor: pointer;
+}
+
+.model-load-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.model-load-row button {
+  height: 38px;
+  min-width: 96px;
+  border: 0;
+  border-radius: 6px;
+  background: #1e8a7a;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.model-load-row button:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+#localLoadStatus {
+  min-width: 0;
+  color: #5e6b78;
+  font-size: 13px;
+}
+
+#localLoadStatus[data-status="ready"] {
+  color: #176f63;
+}
+
+#localLoadStatus[data-status="error"] {
+  color: #8a1e2b;
+}
+
+.model-load-log {
+  width: 100%;
+  max-height: 190px;
+  margin: 12px 0 0;
+  overflow: auto;
+  border: 1px solid rgba(24, 39, 54, 0.14);
+  border-radius: 6px;
+  background: #111820;
+  padding: 10px;
+  color: #dce6ef;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
 }
 
 .setting-hint {

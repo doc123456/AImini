@@ -6,18 +6,11 @@ const fields = {
   lmBaseUrl: document.getElementById("lmBaseUrl"),
   lmApiKey: document.getElementById("lmApiKey"),
   lmModel: document.getElementById("lmModel"),
-  localBaseUrl: document.getElementById("localBaseUrl"),
-  localApiKey: document.getElementById("localApiKey"),
-  localModel: document.getElementById("localModel"),
   localModelPath: document.getElementById("localModelPath"),
-  localBackend: document.getElementById("localBackend"),
-  localCommand: document.getElementById("localCommand"),
+  localMmprojPath: document.getElementById("localMmprojPath"),
   contextSize: document.getElementById("contextSize"),
-  gpuLayers: document.getElementById("gpuLayers"),
   threads: document.getElementById("threads"),
   temperature: document.getElementById("temperature"),
-  useGpu: document.getElementById("useGpu"),
-  offloadKqv: document.getElementById("offloadKqv"),
   thinkingMode: document.getElementById("thinkingMode"),
   streamMode: document.getElementById("streamMode"),
   cacheDirectory: document.getElementById("cacheDirectory"),
@@ -27,10 +20,28 @@ const fields = {
 };
 
 const saveButton = document.getElementById("save");
+const chooseLocalModelButton = document.getElementById("chooseLocalModel");
+const chooseLocalMmprojButton = document.getElementById("chooseLocalMmproj");
+const clearLocalMmprojButton = document.getElementById("clearLocalMmproj");
+const loadLocalModelButton = document.getElementById("loadLocalModel");
+const localLoadStatus = document.getElementById("localLoadStatus");
+const localLoadLog = document.getElementById("localLoadLog");
 const chooseCacheDirectoryButton = document.getElementById("chooseCacheDirectory");
+const openCacheDirectoryButton = document.getElementById("openCacheDirectory");
 const clearCacheButton = document.getElementById("clearCache");
 const cacheDefaultPath = document.getElementById("cacheDefaultPath");
 const status = document.getElementById("status");
+let currentConfig;
+
+function renderLocalLoadState(state = {}) {
+  const statusText = state.message || "未加载模型";
+  localLoadStatus.textContent = statusText;
+  localLoadStatus.dataset.status = state.status || "idle";
+  loadLocalModelButton.disabled = state.status === "loading";
+  loadLocalModelButton.textContent = state.status === "loading" ? "加载中..." : "加载模型";
+  localLoadLog.textContent = (state.logs || []).slice(-80).join("\n");
+  localLoadLog.scrollTop = localLoadLog.scrollHeight;
+}
 
 document.querySelectorAll(".settings-tab").forEach((tab) => {
   tab.addEventListener("click", () => {
@@ -45,6 +56,7 @@ document.querySelectorAll(".settings-tab").forEach((tab) => {
 });
 
 function setForm(config) {
+  currentConfig = config;
   fields.provider.value = config.provider;
   fields.apiBaseUrl.value = config.api.baseUrl;
   fields.apiKey.value = config.api.apiKey;
@@ -52,18 +64,11 @@ function setForm(config) {
   fields.lmBaseUrl.value = config.lmStudio.baseUrl;
   fields.lmApiKey.value = config.lmStudio.apiKey;
   fields.lmModel.value = config.lmStudio.model;
-  fields.localBaseUrl.value = config.local.baseUrl;
-  fields.localApiKey.value = config.local.apiKey;
-  fields.localModel.value = config.local.model;
   fields.localModelPath.value = config.local.modelPath;
-  fields.localBackend.value = config.local.backend;
-  fields.localCommand.value = config.local.command;
+  fields.localMmprojPath.value = config.local.mmprojPath || "";
   fields.contextSize.value = config.local.contextSize;
-  fields.gpuLayers.value = config.local.gpuLayers;
   fields.threads.value = config.local.threads;
   fields.temperature.value = config.local.temperature;
-  fields.useGpu.checked = config.local.useGpu;
-  fields.offloadKqv.checked = config.local.offloadKqv;
   fields.thinkingMode.checked = config.behavior?.thinkingMode !== false;
   fields.streamMode.checked = config.behavior?.stream !== false;
   fields.cacheDirectory.value = config.cache?.directory || "";
@@ -89,16 +94,17 @@ function getForm() {
     },
     local: {
       enabled: fields.provider.value === "local",
-      baseUrl: fields.localBaseUrl.value.trim(),
-      apiKey: fields.localApiKey.value.trim(),
-      model: fields.localModel.value.trim(),
+      baseUrl: "http://localhost:8080/v1",
+      apiKey: "local",
+      model: "",
       modelPath: fields.localModelPath.value.trim(),
-      backend: fields.localBackend.value.trim(),
-      command: fields.localCommand.value.trim(),
-      useGpu: fields.useGpu.checked,
+      mmprojPath: fields.localMmprojPath.value.trim(),
+      backend: "内置 llama.cpp CPU",
+      command: "",
+      useGpu: false,
       contextSize: Number(fields.contextSize.value || 4096),
-      gpuLayers: Number(fields.gpuLayers.value || 0),
-      offloadKqv: fields.offloadKqv.checked,
+      gpuLayers: 0,
+      offloadKqv: false,
       threads: Number(fields.threads.value || 4),
       temperature: Number(fields.temperature.value || 0.7)
     },
@@ -115,9 +121,49 @@ function getForm() {
   };
 }
 
+chooseLocalModelButton.addEventListener("click", async () => {
+  const modelPath = await window.aimini.selectLocalModel();
+  if (modelPath) fields.localModelPath.value = modelPath;
+});
+
+chooseLocalMmprojButton.addEventListener("click", async () => {
+  const mmprojPath = await window.aimini.selectLocalMmproj();
+  if (mmprojPath) fields.localMmprojPath.value = mmprojPath;
+});
+
+clearLocalMmprojButton.addEventListener("click", () => {
+  fields.localMmprojPath.value = "";
+});
+
+loadLocalModelButton.addEventListener("click", async () => {
+  try {
+    const saved = await window.aimini.saveSettings(getForm());
+    setForm(saved);
+    renderLocalLoadState({ status: "loading", message: "正在准备加载模型...", logs: [] });
+    const state = await window.aimini.loadLocalModel(saved);
+    renderLocalLoadState(state);
+  } catch (error) {
+    renderLocalLoadState({
+      status: "error",
+      message: error.message || "模型加载失败",
+      logs: [error.stack || error.message || String(error)]
+    });
+  }
+});
+
 chooseCacheDirectoryButton.addEventListener("click", async () => {
   const directory = await window.aimini.selectCacheDirectory();
   if (directory) fields.cacheDirectory.value = directory;
+});
+
+openCacheDirectoryButton.addEventListener("click", async () => {
+  try {
+    await window.aimini.openCacheDirectory();
+    status.textContent = "已打开缓存文件夹";
+  } catch (error) {
+    status.textContent = error.message || "打开失败";
+  }
+  setTimeout(() => { status.textContent = ""; }, 1800);
 });
 
 clearCacheButton.addEventListener("click", async () => {
@@ -134,3 +180,5 @@ saveButton.addEventListener("click", async () => {
 });
 
 window.aimini.getSettings().then(setForm);
+window.aimini.getLocalLoadStatus().then(renderLocalLoadState);
+window.aimini.onLocalLoadStatus(renderLocalLoadState);
